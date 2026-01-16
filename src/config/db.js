@@ -1,12 +1,20 @@
-const mysql = require("mysql2/promise");
+const mongoose = require("mongoose");
 
-const db = mysql.createPool({
-  host: "srv440.hstgr.io",
-  user: "u696800077_apjuadmin",
-  password: "apju@admin123",
-  database: "u696800077_apju",
-  waitForConnections: true,
-  connectionLimit: 10,
-});
+const connectDB = async () => {
+  try {
+    await mongoose.connect(
+      "mongodb+srv://dhruv:123@cluster0.us4e5ih.mongodb.net/Up02",
+      {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      }
+    );
 
-module.exports = db;
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;

@@ -11,4 +11,4 @@ router.post("/add", addContent);
 router.get("/all", getAllContent);
 router.get("/home", getHomeContent);
 
-module.exports = router; // ✅ VERY IMPORTANT
+module.exports = router;
