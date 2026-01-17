@@ -90,14 +90,14 @@ app.get('/api/health', (req, res) => {
 // Debug endpoint to test content routes
 app.get('/api/debug/routes', (req, res) => {
   const routes = [
-    'GET /api/content/all',
-    'GET /api/content/home', 
-    'GET /api/content/type/:type',
-    'GET /api/content/:id',
-    'POST /api/content/add',
-    'PUT /api/content/update/:id',
-    'DELETE /api/content/:id',
-    'PUT /api/content/toggle-home/:id'
+    '/api/content/all',
+    '/api/content/home', 
+    '/api/content/type/:type',
+    '/api/content/:id',
+    '/api/content/add',
+    '/api/content/update/:id',
+    '/api/content/:id',
+    '/api/content/toggle-home/:id'
   ];
   res.json({ routes });
 });
