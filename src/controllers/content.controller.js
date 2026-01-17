@@ -1,253 +1,261 @@
-const mongoose = require('mongoose');
-const Content = require('../models/content.model');
-const { downloadImage, deleteOldImage } = require('../utils/fileDownloader');
-const path = require('path');
-const fs = require('fs');
+import Content from '../models/content.model.js';
 
-/* =========================================================
-   FILE UPLOAD
-========================================================= */
-exports.uploadFile = (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+const contentController = {
+  // Add new content with optional file upload
+  addContent: async (req, res) => {
+    try {
+      const { title, description, content, content_type, show_on_home, video_url } = req.body;
+      
+      // Validation
+      if (!title || !description || !content_type) {
+        return res.status(400).json({ 
+          message: 'Title, description, and content type are required' 
+        });
+      }
+
+      if (!['blog', 'photo', 'video'].includes(content_type)) {
+        return res.status(400).json({ 
+          message: 'Content type must be blog, photo, or video' 
+        });
+      }
+
+      // Handle file upload
+      let media_url = '';
+      if (req.file) {
+        media_url = `/uploads/${req.file.filename}`;
+      } else if (req.body.media_url) {
+        media_url = req.body.media_url.trim();
+      }
+
+      // For video type, require video_url if no file uploaded
+      if (content_type === 'video' && !media_url && !video_url) {
+        return res.status(400).json({ 
+          message: 'Video URL or video file is required for video content' 
+        });
+      }
+
+      const newContent = new Content({
+        title: title.trim(),
+        description: description.trim(),
+        content: content?.trim() || '',
+        media_url,
+        video_url: video_url?.trim() || '',
+        content_type,
+        show_on_home: show_on_home === 'true' || show_on_home === true
+      });
+
+      const savedContent = await newContent.save();
+      
+      res.status(201).json({
+        success: true,
+        data: savedContent,
+        message: 'Content added successfully'
+      });
+    } catch (error) {
+      console.error('Error adding content:', error);
+      res.status(500).json({ 
+        message: error.message || 'Failed to add content' 
+      });
     }
+  },
 
-    const filePath = `/uploads/${req.file.filename}`;
+  // Get content by type
+  getContentByType: async (req, res) => {
+    try {
+      const { type } = req.params;
+      
+      if (!['blog', 'photo', 'video'].includes(type)) {
+        return res.status(400).json({ 
+          message: 'Content type must be blog, photo, or video' 
+        });
+      }
 
-    res.json({
-      success: true,
-      message: 'File uploaded successfully',
-      filePath,
-      fileName: req.file.filename
-    });
-  } catch (error) {
-    console.error('File upload error:', error);
-    res.status(500).json({ error: 'Error uploading file' });
+      const content = await Content.find({ content_type: type })
+        .sort({ created_at: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: content
+      });
+    } catch (error) {
+      console.error(`Error fetching content by type ${req.params.type}:`, error);
+      res.status(500).json({ message: 'Failed to fetch content' });
+    }
+  },
+
+  // Get all content
+  getAllContent: async (req, res) => {
+    try {
+      const { type } = req.query;
+      let query = {};
+      
+      if (type && ['blog', 'photo', 'video'].includes(type)) {
+        query.content_type = type;
+      }
+
+      const content = await Content.find(query)
+        .sort({ created_at: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: content
+      });
+    } catch (error) {
+      console.error('Error fetching all content:', error);
+      res.status(500).json({ message: 'Failed to fetch content' });
+    }
+  },
+
+  // Get homepage content (max 3 items)
+  getHomeContent: async (req, res) => {
+    try {
+      console.log('🔍 Fetching home content...');
+      
+      const content = await Content.find({ show_on_home: true })
+        .sort({ home_priority: -1, created_at: -1 })
+        .limit(3)
+        .lean();
+      
+      console.log(`✅ Found ${content.length} home content items`);
+      
+      res.json({
+        success: true,
+        data: content
+      });
+    } catch (error) {
+      console.error('Error fetching home content:', error);
+      res.status(500).json({ message: 'Failed to fetch home content' });
+    }
+  },
+
+  // Get content by ID
+  getContentById: async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: 'Content ID is required' });
+      }
+
+      const content = await Content.findById(id).lean();
+      
+      if (!content) {
+        return res.status(404).json({ message: 'Content not found' });
+      }
+
+      res.json({
+        success: true,
+        data: content
+      });
+    } catch (error) {
+      console.error('Error fetching content by ID:', error);
+      res.status(500).json({ message: 'Failed to fetch content' });
+    }
+  },
+
+  // Update content
+  updateContent: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, description, content, show_on_home, video_url } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ message: 'Content ID is required' });
+      }
+
+      const updateData = {};
+      if (title !== undefined) updateData.title = title.trim();
+      if (description !== undefined) updateData.description = description.trim();
+      if (content !== undefined) updateData.content = content.trim();
+      if (video_url !== undefined) updateData.video_url = video_url.trim();
+      if (show_on_home !== undefined) updateData.show_on_home = show_on_home === 'true' || show_on_home === true;
+
+      // Handle file upload if new file provided
+      if (req.file) {
+        updateData.media_url = `/uploads/${req.file.filename}`;
+      } else if (req.body.media_url !== undefined) {
+        updateData.media_url = req.body.media_url.trim();
+      }
+
+      const updatedContent = await Content.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true, runValidators: true }
+      ).lean();
+
+      if (!updatedContent) {
+        return res.status(404).json({ message: 'Content not found' });
+      }
+
+      res.json({
+        success: true,
+        data: updatedContent,
+        message: 'Content updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating content:', error);
+      res.status(500).json({ 
+        message: error.message || 'Failed to update content' 
+      });
+    }
+  },
+
+  // Delete content
+  deleteContent: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ message: 'Content ID is required' });
+      }
+
+      const deletedContent = await Content.findByIdAndDelete(id);
+
+      if (!deletedContent) {
+        return res.status(404).json({ message: 'Content not found' });
+      }
+
+      res.json({
+        success: true,
+        message: 'Content deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      res.status(500).json({ message: 'Failed to delete content' });
+    }
+  },
+
+  // Toggle homepage display
+  toggleHomeDisplay: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ message: 'Content ID is required' });
+      }
+
+      const content = await Content.findById(id);
+      
+      if (!content) {
+        return res.status(404).json({ message: 'Content not found' });
+      }
+
+      await content.toggleHomeDisplay();
+
+      res.json({
+        success: true,
+        data: content,
+        message: `Content ${content.show_on_home ? 'added to' : 'removed from'} homepage`
+      });
+    } catch (error) {
+      console.error('Error toggling home display:', error);
+      res.status(500).json({ 
+        message: error.message || 'Failed to toggle homepage display' 
+      });
+    }
   }
 };
 
-/* =========================================================
-   ADD CONTENT
-========================================================= */
-exports.addContent = async (req, res) => {
-  try {
-    const {
-      title,
-      description,
-      content,
-      type,
-      media_url,
-      video_url,
-      show_on_home,
-      imageUrl
-    } = req.body;
-
-    let finalMediaUrl = media_url;
-
-    // Download image from URL if provided
-    if (imageUrl && /^https?:\/\//.test(imageUrl)) {
-      finalMediaUrl = await downloadImage(imageUrl);
-    }
-
-    const newContent = new Content({
-      title,
-      description,
-      content: content || '',
-      type,
-      media_url: finalMediaUrl,
-      video_url: video_url || '',
-      show_on_home: show_on_home === true || show_on_home === 'true'
-    });
-
-    const savedContent = await newContent.save();
-
-    res.status(201).json({
-      success: true,
-      data: formatContent(savedContent)
-    });
-
-  } catch (error) {
-    console.error('Add content error:', error);
-    res.status(500).json({ error: 'Failed to add content' });
-  }
-};
-
-/* =========================================================
-   GET ALL CONTENT
-========================================================= */
-exports.getAllContent = async (req, res) => {
-  try {
-    const content = await Content.find().sort({ createdAt: -1 });
-    res.json(content.map(formatContent));
-  } catch (error) {
-    console.error('Get all content error:', error);
-    res.status(500).json({ error: 'Failed to fetch content' });
-  }
-};
-
-/* =========================================================
-   GET HOME CONTENT (TOP 3)
-========================================================= */
-exports.getHomeContent = async (req, res) => {
-  try {
-    const content = await Content.find({ show_on_home: true })
-      .sort({ createdAt: -1 })
-      .limit(3);
-
-    res.json(content.map(formatContent));
-  } catch (error) {
-    console.error('Get home content error:', error);
-    res.status(500).json({ error: 'Failed to fetch home content' });
-  }
-};
-
-/* =========================================================
-   GET CONTENT BY ID
-========================================================= */
-exports.getContentById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid content ID' });
-    }
-
-    const content = await Content.findById(id);
-    if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
-    }
-
-    res.json(formatContent(content));
-  } catch (error) {
-    console.error('Get content error:', error);
-    res.status(500).json({ error: 'Failed to fetch content' });
-  }
-};
-
-/* =========================================================
-   UPDATE CONTENT
-========================================================= */
-exports.updateContent = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid content ID' });
-    }
-
-    const oldContent = await Content.findById(id);
-    if (!oldContent) {
-      return res.status(404).json({ error: 'Content not found' });
-    }
-
-    // Delete old image if media_url changed
-    if (
-      req.body.media_url &&
-      oldContent.media_url &&
-      req.body.media_url !== oldContent.media_url
-    ) {
-      deleteOldImage(oldContent.media_url);
-    }
-
-    const updated = await Content.findByIdAndUpdate(
-      id,
-      { ...req.body, updatedAt: Date.now() },
-      { new: true }
-    );
-
-    res.json(formatContent(updated));
-  } catch (error) {
-    console.error('Update content error:', error);
-    res.status(500).json({ error: 'Failed to update content' });
-  }
-};
-
-/* =========================================================
-   DELETE CONTENT
-========================================================= */
-exports.deleteContent = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid content ID' });
-    }
-
-    const content = await Content.findByIdAndDelete(id);
-    if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
-    }
-
-    if (content.media_url) {
-      deleteOldImage(content.media_url);
-    }
-
-    res.json({
-      success: true,
-      message: 'Content deleted successfully',
-      id: content._id
-    });
-  } catch (error) {
-    console.error('Delete content error:', error);
-    res.status(500).json({ error: 'Failed to delete content' });
-  }
-};
-
-/* =========================================================
-   TOGGLE HOME DISPLAY
-========================================================= */
-exports.toggleHomeDisplay = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: 'Invalid content ID' });
-    }
-
-    const content = await Content.findById(id);
-    if (!content) {
-      return res.status(404).json({ error: 'Content not found' });
-    }
-
-    content.show_on_home = !content.show_on_home;
-    await content.save();
-
-    res.json({
-      success: true,
-      id: content._id,
-      show_on_home: content.show_on_home
-    });
-  } catch (error) {
-    console.error('Toggle home display error:', error);
-    res.status(500).json({ error: 'Failed to update home display' });
-  }
-};
-
-/* =========================================================
-   HELPER FUNCTION
-========================================================= */
-function formatContent(item) {
-  const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
-
-  return {
-    id: item._id,
-    title: item.title,
-    description: item.description,
-    content: item.content,
-    content_type: item.type,
-
-    // ✅ FULL IMAGE URL
-    media_url: item.media_url
-      ? item.media_url.startsWith('http')
-        ? item.media_url
-        : `${baseUrl}/uploads/${item.media_url}`
-      : null,
-
-    video_url: item.video_url || null,
-    show_on_home: item.show_on_home,
-    created_at: item.createdAt,
-    updated_at: item.updatedAt
-  };
-}
-
+export default contentController;
