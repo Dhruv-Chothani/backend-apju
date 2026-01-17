@@ -23,18 +23,30 @@ const PORT = process.env.PORT || 5000;
    CORS – ALLOW ALL ORIGINS
 ============================ */
 app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: "*"
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Allow all origins in production
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Origin",
+    "X-Requested-With",
+    "Content-Type",
+    "Accept",
+    "Authorization",
+    "Cache-Control",
+    "X-Access-Token"
+  ],
+  optionsSuccessStatus: 200
 }));
 
-app.options("*", cors());
+// Handle preflight requests explicitly
+app.options('*', cors());
 
-// Cross-Origin-Resource-Policy fix
-app.use((req, res, next) => {
-  res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  next();
-});
 
 // Create uploads directory if it doesn't exist
 import fs from 'fs';
@@ -80,8 +92,8 @@ app.use('/api/content', (req, res, next) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'APJU Media Hub API is running',
     timestamp: new Date().toISOString()
   });
@@ -91,7 +103,7 @@ app.get('/api/health', (req, res) => {
 app.get('/api/debug/routes', (req, res) => {
   const routes = [
     '/api/content/all',
-    '/api/content/home', 
+    '/api/content/home',
     '/api/content/type/:type',
     '/api/content/:id',
     '/api/content/add',
@@ -105,8 +117,8 @@ app.get('/api/debug/routes', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err.stack);
-  res.status(500).json({ 
-    message: 'Something went wrong!', 
+  res.status(500).json({
+    message: 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
 });
