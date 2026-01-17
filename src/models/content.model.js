@@ -18,7 +18,7 @@ const contentSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['article', 'video', 'image', 'other']
+    enum: ['article', 'video', 'image', 'blog', 'other']
   },
   media_url: {
     type: String,
