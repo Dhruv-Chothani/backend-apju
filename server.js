@@ -23,24 +23,10 @@ const PORT = process.env.PORT || 5000;
    CORS – ALLOW ALL ORIGINS
 ============================ */
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    // Allow all origins in production
-    return callback(null, true);
-  },
-  credentials: true,
+  origin: "*", // Allow all origins
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: [
-    "Origin",
-    "X-Requested-With",
-    "Content-Type",
-    "Accept",
-    "Authorization",
-    "Cache-Control",
-    "X-Access-Token"
-  ],
+  allowedHeaders: ["*"], // Allow all headers
+  credentials: false, // No credentials required
   optionsSuccessStatus: 200
 }));
 
@@ -61,14 +47,14 @@ app.use(
   express.static(path.join(process.cwd(), "uploads"))
 );
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing middleware - increased limits for file uploads
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/apju_media_hub';
+    const mongoURI = 'mongodb+srv://dhruv:123@cluster0.us4e5ih.mongodb.net/Up02';
     await mongoose.connect(mongoURI);
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
@@ -119,7 +105,7 @@ app.use((err, req, res, next) => {
   console.error('❌ Error:', err.stack);
   res.status(500).json({
     message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+    error: err.message // Show full error details
   });
 });
 
@@ -129,10 +115,11 @@ app.use('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Local: http://localhost:${PORT}`);
 });
 
 export default app;

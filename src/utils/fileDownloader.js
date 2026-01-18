@@ -1,7 +1,7 @@
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
 
@@ -9,7 +9,7 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
-exports.downloadImage = async (imageUrl) => {
+export const downloadImage = async (imageUrl) => {
   const response = await axios({
     url: imageUrl,
     method: 'GET',
@@ -29,7 +29,7 @@ exports.downloadImage = async (imageUrl) => {
   });
 };
 
-exports.deleteOldImage = (mediaUrl) => {
+export const deleteOldImage = (mediaUrl) => {
   if (!mediaUrl) return;
 
   const fileName = path.basename(mediaUrl);

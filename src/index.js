@@ -1,12 +1,17 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const connectDB = require("./config/db");
+import express from "express";
+import cors from "cors";
+import path from "path";
+import fs from "fs";
+import connectDB from "./config/db.js";
+import { fileURLToPath } from 'url';
+
+// ES Module fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
 // Create uploads directory if it doesn't exist
-const fs = require("fs");
 const uploadsDir = path.join(__dirname, "..", "uploads");
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -43,7 +48,8 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use("/api/content", require("./routes/content.routes"));
+import contentRoutes from "./routes/content.routes.js";
+app.use("/api/content", contentRoutes);
 
 // 404 Handler
 app.use((req, res) => {

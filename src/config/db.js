@@ -1,10 +1,14 @@
-const mysql = require("mysql2");
+import mongoose from 'mongoose';
 
-const db = mysql.createPool({
-  host: "localhost",
-  user: "u696800077_apjuadmin",
-  password: "apju@admin123",
-  database: "u696800077_apju",
-});
+const connectDB = async () => {
+  try {
+    const mongoURI = 'mongodb+srv://dhruv:123@cluster0.us4e5ih.mongodb.net/Up02';
+    await mongoose.connect(mongoURI);
+    console.log('✅ MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    process.exit(1);
+  }
+};
 
-module.exports = db;
+export default connectDB;
