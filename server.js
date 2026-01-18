@@ -1,6 +1,5 @@
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
@@ -13,11 +12,8 @@ import contentRoutes from './src/routes/content.routes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: './src/.env' });
-
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = 5000;
 
 /* ============================
    CORS – ALLOW ALL ORIGINS
@@ -118,7 +114,6 @@ app.use('*', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Local: http://localhost:${PORT}`);
 });
 
