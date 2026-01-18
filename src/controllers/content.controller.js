@@ -24,12 +24,13 @@ const contentController = {
 
       // Handle file upload
       let media_url = '';
+      let imageBuffer = null;
+      let imageType = '';
+
       if (req.file) {
-        // For Vercel deployment, convert file to base64 and store as data URL
-        const fileBuffer = req.file.buffer;
-        const base64 = fileBuffer.toString('base64');
-        const mimeType = req.file.mimetype;
-        media_url = `data:${mimeType};base64,${base64}`;
+        // Store image buffer and MIME type in MongoDB
+        imageBuffer = req.file.buffer;
+        imageType = req.file.mimetype;
       } else if (req.body.media_url) {
         media_url = req.body.media_url.trim();
       }
@@ -48,7 +49,9 @@ const contentController = {
         media_url,
         video_url: video_url?.trim() || '',
         content_type: finalContentType,
-        show_on_home: show_on_home === 'true' || show_on_home === true
+        show_on_home: show_on_home === 'true' || show_on_home === true,
+        image: imageBuffer,
+        imageType: imageType
       });
 
       const savedContent = await newContent.save();
@@ -183,13 +186,14 @@ const contentController = {
 
       // Handle file upload if new file provided
       if (req.file) {
-        // For Vercel deployment, convert file to base64 and store as data URL
-        const fileBuffer = req.file.buffer;
-        const base64 = fileBuffer.toString('base64');
-        const mimeType = req.file.mimetype;
-        updateData.media_url = `data:${mimeType};base64,${base64}`;
+        // Store image buffer and MIME type in MongoDB
+        updateData.image = req.file.buffer;
+        updateData.imageType = req.file.mimetype;
+        updateData.media_url = ''; // Clear external URL if local file uploaded
       } else if (req.body.media_url !== undefined) {
         updateData.media_url = req.body.media_url.trim();
+        updateData.image = null; // Clear image buffer if external URL provided
+        updateData.imageType = '';
       }
 
       const updatedContent = await Content.findByIdAndUpdate(
@@ -267,6 +271,37 @@ const contentController = {
       res.status(500).json({ 
         message: error.message || 'Failed to toggle homepage display' 
       });
+    }
+  },
+
+  // Get image by ID
+  getImage: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ message: 'Content ID is required' });
+      }
+
+      const content = await Content.findById(id);
+      
+      if (!content) {
+        return res.status(404).json({ message: 'Content not found' });
+      }
+
+      if (!content.image || !content.imageType) {
+        return res.status(404).json({ message: 'Image not found' });
+      }
+
+      // Set the correct Content-Type header
+      res.set('Content-Type', content.imageType);
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+      
+      // Send the image buffer
+      res.send(content.image);
+    } catch (error) {
+      console.error('Error fetching image:', error);
+      res.status(500).json({ message: 'Failed to fetch image' });
     }
   }
 };

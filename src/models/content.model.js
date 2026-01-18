@@ -40,6 +40,15 @@ const contentSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 10
+  },
+  // Image storage fields for MongoDB
+  image: {
+    type: Buffer,
+    default: null
+  },
+  imageType: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true
@@ -48,6 +57,18 @@ const contentSchema = new mongoose.Schema({
 // Index for better query performance
 contentSchema.index({ content_type: 1, show_on_home: 1 });
 contentSchema.index({ created_at: -1 });
+
+// Virtual to get image URL if image exists
+contentSchema.virtual('imageUrl').get(function() {
+  if (this.image && this.imageType) {
+    return `/api/content/image/${this._id}`;
+  }
+  return this.media_url;
+});
+
+// Ensure virtual fields are included in JSON output
+contentSchema.set('toJSON', { virtuals: true });
+contentSchema.set('toObject', { virtuals: true });
 
 // Ensure only 3 items can be marked for homepage
 contentSchema.pre('save', async function(next) {

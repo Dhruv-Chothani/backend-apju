@@ -10,6 +10,9 @@ router.get('/home', contentController.getHomeContent);
 router.get('/type/:type', contentController.getContentByType);
 router.get('/:id', contentController.getContentById);
 
+// Image serving route
+router.get('/image/:id', contentController.getImage);
+
 // Content management routes - no authentication required
 router.post('/add', uploadSingle, contentController.addContent);
 router.put('/update/:id', uploadSingle, contentController.updateContent);
