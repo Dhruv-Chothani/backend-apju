@@ -40,7 +40,12 @@ if (!fs.existsSync(uploadsDir)) {
 // STATIC uploads exposure (BEFORE routes)
 app.use(
   "/uploads",
-  express.static(path.join(process.cwd(), "uploads"))
+  express.static(path.join(__dirname, 'uploads'), {
+    setHeaders: (res, path) => {
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+  })
 );
 
 // Body parsing middleware - increased limits for file uploads

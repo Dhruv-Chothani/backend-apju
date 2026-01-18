@@ -25,7 +25,11 @@ const contentController = {
       // Handle file upload
       let media_url = '';
       if (req.file) {
-        media_url = `/uploads/${req.file.filename}`;
+        // For Vercel deployment, convert file to base64 and store as data URL
+        const fileBuffer = req.file.buffer;
+        const base64 = fileBuffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        media_url = `data:${mimeType};base64,${base64}`;
       } else if (req.body.media_url) {
         media_url = req.body.media_url.trim();
       }
