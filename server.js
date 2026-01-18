@@ -29,25 +29,6 @@ app.use(cors({
 // Handle preflight requests explicitly
 app.options('*', cors());
 
-
-// Create uploads directory if it doesn't exist
-import fs from 'fs';
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
-
-// STATIC uploads exposure (BEFORE routes)
-app.use(
-  "/uploads",
-  express.static(path.join(__dirname, 'uploads'), {
-    setHeaders: (res, path) => {
-      res.set('Access-Control-Allow-Origin', '*');
-      res.set('Cross-Origin-Resource-Policy', 'cross-origin');
-    }
-  })
-);
-
 // Body parsing middleware - increased limits for file uploads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
@@ -118,7 +99,6 @@ app.use('*', (req, res) => {
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
-  console.log(`📁 Uploads directory: ${uploadsDir}`);
   console.log(`🔗 Local: http://localhost:${PORT}`);
 });
 
