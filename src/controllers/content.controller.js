@@ -4,16 +4,19 @@ const contentController = {
   // Add new content with optional file upload
   addContent: async (req, res) => {
     try {
-      const { title, description, content, content_type, show_on_home, video_url } = req.body;
+      const { title, description, content, type, content_type, show_on_home, video_url } = req.body;
+      
+      // Support both 'type' and 'content_type' for backward compatibility
+      const finalContentType = content_type || type || 'blog';
       
       // Validation
-      if (!title || !description || !content_type) {
+      if (!title || !description || !finalContentType) {
         return res.status(400).json({ 
           message: 'Title, description, and content type are required' 
         });
       }
 
-      if (!['blog', 'photo', 'video'].includes(content_type)) {
+      if (!['blog', 'photo', 'video'].includes(finalContentType)) {
         return res.status(400).json({ 
           message: 'Content type must be blog, photo, or video' 
         });
@@ -28,7 +31,7 @@ const contentController = {
       }
 
       // For video type, require video_url if no file uploaded
-      if (content_type === 'video' && !media_url && !video_url) {
+      if (finalContentType === 'video' && !media_url && !video_url) {
         return res.status(400).json({ 
           message: 'Video URL or video file is required for video content' 
         });
@@ -40,7 +43,7 @@ const contentController = {
         content: content?.trim() || '',
         media_url,
         video_url: video_url?.trim() || '',
-        content_type,
+        content_type: finalContentType,
         show_on_home: show_on_home === 'true' || show_on_home === true
       });
 
@@ -87,11 +90,13 @@ const contentController = {
   // Get all content
   getAllContent: async (req, res) => {
     try {
-      const { type } = req.query;
+      const { type, content_type } = req.query;
       let query = {};
       
-      if (type && ['blog', 'photo', 'video'].includes(type)) {
-        query.content_type = type;
+      // Support both 'type' and 'content_type' query parameters
+      const finalType = content_type || type;
+      if (finalType && ['blog', 'photo', 'video'].includes(finalType)) {
+        query.content_type = finalType;
       }
 
       const content = await Content.find(query)
